@@ -372,8 +372,13 @@ export const createLeaveApplication = async (
     const formData = new FormData();
     formData.append('LeaveCodeId', leaveCodeId.toString());
     formData.append('Year', new Date().getFullYear().toString());
-    formData.append('DateFrom', formatDate(startDate));
-    formData.append('DateTo', formatDate(endDate));
+    
+    // Format dates properly for API
+    const formattedStartDate = startDate.toISOString().split('T')[0] + 'T00:00:00Z';
+    const formattedEndDate = endDate.toISOString().split('T')[0] + 'T00:00:00Z';
+    
+    formData.append('DateFrom', formattedStartDate);
+    formData.append('DateTo', formattedEndDate);
     formData.append('TotalDays', totalDays.toString());
     formData.append('UserId', userId.toString());
     
@@ -390,13 +395,21 @@ export const createLeaveApplication = async (
       formData.append('FamilyId', options.familyId.toString());
     }
     
-    // Add leave date list as JSON string
-    formData.append('LeaveDateList', JSON.stringify(leaveDateList));
+    // Add leave date list items individually with array notation in the key
+    leaveDateList.forEach((dateItem, index) => {
+      // Ensure date format is consistent
+      formData.append(`LeaveDateList[${index}].Date`, dateItem.date);
+      formData.append(`LeaveDateList[${index}].SessionId`, dateItem.sessionId.toString());
+    });
+    
+    // Log the form data for debugging
+    console.log('Sending form data to API:');
+    for (const pair of (formData as any).entries()) {
+      console.log(`${pair[0]}: ${pair[1]}`);
+    }
     
     // Construct the URL for creating leave application
-    // Current incorrect URL:
-    const url = `${baseUrl}/apps/api/v1/employees/${employeeId}/leaves/leave-dates?LeaveCodeId=${leaveCodeId}&DateFrom=${formatDate(startDate)}&DateTo=${formatDate(endDate)}`;
-  
+    const url = `${baseUrl}/v1/employees/${employeeId}/leaves`;
     
     // Make the API request
     const response = await axios.post<CreateLeaveApplicationResponse>(
@@ -420,6 +433,98 @@ export const createLeaveApplication = async (
     }
   } catch (error) {
     console.error('Error creating leave application:', error);
+    throw error;
+  }
+};
+
+// Define interface for available session
+export interface AvailableSession {
+  id: number;
+  description: string;
+}
+
+// Define interface for leave application in the response
+export interface LeaveAppListItem {
+  leaveCode: string;
+  session: string;
+  approvalStatus: string;
+}
+
+// Define interface for leave date validation item
+export interface LeaveDateValidationItem {
+  date: string;
+  availableSessions: AvailableSession[];
+  typeOfDay: string;
+  isWorkingDay: boolean;
+  leaveAppList: LeaveAppListItem[];
+  isHoliday: boolean;
+  holiday: string;
+  isConsecutive: boolean;
+}
+
+// Define interface for leave date validation response
+export interface LeaveDateValidationResponse {
+  success: boolean;
+  message: string;
+  data: LeaveDateValidationItem[];
+}
+
+/**
+ * Check if the selected date range is available for leave application
+ * @param leaveCodeId The ID of the leave code
+ * @param startDate The start date of the leave
+ * @param endDate The end date of the leave
+ * @returns Promise with the validation data or error
+ */
+export const checkLeaveDateValidation = async (
+  leaveCodeId: number,
+  startDate: Date,
+  endDate: Date
+): Promise<LeaveDateValidationItem[]> => {
+  try {
+    // Get authentication data from storage
+    const baseUrl = await getBaseUrl();
+    const token = await getUserToken();
+    const employeeId = await getEmployeeId();
+    
+    if (!baseUrl || !token || !employeeId) {
+      throw new Error('Missing required authentication data');
+    }
+    
+    // Format dates for API query with consistent format (YYYY-MM-DDT00:00:00.000Z)
+    const formatDateForAPI = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}T00:00:00.000Z`;
+    };
+    
+    const formattedStartDate = formatDateForAPI(startDate);
+    const formattedEndDate = formatDateForAPI(endDate);
+    
+    console.log(`Checking leave date validation for dates: ${formattedStartDate} to ${formattedEndDate}`);
+    
+    // Construct the URL for checking leave date validation
+    const url = `${baseUrl}/v1/employees/${employeeId}/leaves/leave-dates?LeaveCodeId=${leaveCodeId}&DateFrom=${formattedStartDate}&DateTo=${formattedEndDate}`;
+    
+    // Make the API request
+    const response = await axios.get<LeaveDateValidationResponse>(
+      url,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    
+    if (response.data.success) {
+      console.log('Leave date validation response:', response.data.data);
+      return response.data.data;
+    } else {
+      throw new Error(response.data.message || 'Failed to validate leave dates');
+    }
+  } catch (error) {
+    console.error('Error validating leave dates:', error);
     throw error;
   }
 };

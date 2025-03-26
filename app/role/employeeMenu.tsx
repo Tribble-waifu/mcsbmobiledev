@@ -6,7 +6,9 @@ import { useTranslation } from 'react-i18next';
 import useTheme from '../themes/useTheme';
 import { clearAuthData, getUserToken, getBaseUrl } from '../utils/authStorage';
 import { getEmployeeName, getCompanyName } from '../utils/employeeStorage';
+import { getLanguage } from '../utils/settingsStorage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import i18next from 'i18next'; // Changed from '../i18n' to 'i18next'
 
 // Import components
 import Button from '../components/Button';
@@ -39,10 +41,19 @@ export default function EmployeeMenu() {
   const [companyName, setCompanyName] = useState('');
   const [moduleAccess, setModuleAccess] = useState<ModuleAccessMap>({});
 
-  // Load employee data, module access and simulate loading
+  // Load language settings and other data
   useEffect(() => {
-    const loadData = async () => {
+    const loadLanguageAndData = async () => {
       try {
+        // Load saved language from settingsStorage
+        const savedLanguage = await getLanguage();
+        if (savedLanguage) {
+          // Apply the saved language using i18next instead of i18n
+          i18next.changeLanguage(savedLanguage);
+          console.log('Loaded saved language:', savedLanguage);
+        }
+
+        // Continue with loading other data
         const name = await getEmployeeName();
         const company = await getCompanyName();
         
@@ -54,7 +65,6 @@ export default function EmployeeMenu() {
         
         if (moduleAccessData) {
           const parsedData = JSON.parse(moduleAccessData);
-          console.log('Module access data structure:', JSON.stringify(parsedData, null, 2));
           setModuleAccess(parsedData);
         } else {
           // Fetch module access if not in AsyncStorage
@@ -66,18 +76,17 @@ export default function EmployeeMenu() {
           setLoading(false);
         }, 1000);
       } catch (error) {
-        console.error('Error loading employee data:', error);
+        console.error('Error loading data:', error);
         setLoading(false);
       }
     };
     
-    loadData();
+    loadLanguageAndData();
   }, []);
 
   // Fetch module access from API
   const fetchModuleAccess = async () => {
     try {
-      console.log('Debug - Fetching module access using authStorage functions');
       
       // Use the proper functions from authStorage.ts
       const userToken = await getUserToken();
@@ -93,7 +102,6 @@ export default function EmployeeMenu() {
         const accessPermissions = await AsyncStorage.getItem('accessPermissions');
         if (accessPermissions) {
           const permissions = JSON.parse(accessPermissions);
-          console.log('Using cached access permissions:', permissions);
           setModuleAccess(permissions);
         }
         
@@ -111,11 +119,8 @@ export default function EmployeeMenu() {
       });
       
       const data = await response.json();
-      console.log('Module access API response:', data);
       
       if (data.success && data.data) {
-        console.log('Module access fetched successfully');
-        console.log('Access permissions:', data.data);
         setModuleAccess(data.data);
         // Save to AsyncStorage for future use
         await AsyncStorage.setItem('moduleAccess', JSON.stringify(data.data));
@@ -128,7 +133,6 @@ export default function EmployeeMenu() {
       const accessPermissions = await AsyncStorage.getItem('accessPermissions');
       if (accessPermissions) {
         const permissions = JSON.parse(accessPermissions);
-        console.log('Using cached access permissions after error:', permissions);
         setModuleAccess(permissions);
       }
     }
@@ -136,11 +140,9 @@ export default function EmployeeMenu() {
 
   // Check if a module is accessible
   const hasAccess = (moduleName: string): boolean => {
-    console.log('Checking access for module:', moduleName);
     
     // First check if we have the moduleAccess data
     if (Object.keys(moduleAccess).length === 0) {
-      console.log('No module access data available');
       return false;
     }
     
@@ -155,10 +157,8 @@ export default function EmployeeMenu() {
     
     // Get the correct key for this module
     const moduleKey = moduleKeyMap[moduleName.toLowerCase()];
-    console.log('Mapped module key:', moduleKey);
     
     if (moduleKey && moduleAccess[moduleKey]) {
-      console.log('Found access for mapped key:', moduleAccess[moduleKey]);
       // Check if the value is a boolean or an object with access property
       if (typeof moduleAccess[moduleKey] === 'boolean') {
         return moduleAccess[moduleKey] as boolean;
@@ -169,7 +169,6 @@ export default function EmployeeMenu() {
     
     // If no mapping found, try to find a case-insensitive match
     if (moduleAccess[moduleName]) {
-      console.log('Found direct match:', moduleAccess[moduleName]);
       // Check if the value is a boolean or an object with access property
       if (typeof moduleAccess[moduleName] === 'boolean') {
         return moduleAccess[moduleName] as boolean;
@@ -184,7 +183,6 @@ export default function EmployeeMenu() {
     );
     
     if (matchingKey) {
-      console.log('Found matching key:', matchingKey);
       // Check if the value is a boolean or an object with access property
       if (typeof moduleAccess[matchingKey] === 'boolean') {
         return moduleAccess[matchingKey] as boolean;
@@ -193,7 +191,6 @@ export default function EmployeeMenu() {
       }
     }
     
-    console.log('No access found for module:', moduleName);
     return false;
   };
 
@@ -209,7 +206,17 @@ export default function EmployeeMenu() {
       
       // Add a small delay to show the alert before logging out
       setTimeout(async () => {
+        // Save the baseUrl before clearing auth data
+        const baseUrl = await getBaseUrl();
+        
+        // Clear auth data
         await clearAuthData();
+        
+        // If baseUrl exists, restore it after clearing auth data
+        if (baseUrl) {
+          await AsyncStorage.setItem('baseUrl', baseUrl);
+        }
+        
         router.replace('/auth/Login');
       }, 1000);
     } catch (error) {
@@ -279,18 +286,14 @@ export default function EmployeeMenu() {
       }
     ];
 
-    // Log all module access keys for debugging
-    console.log('All module access keys:', Object.keys(moduleAccess));
     
     // Check access for each menu item and log the result
     menuItems.forEach(item => {
       const hasAccessResult = hasAccess(item.moduleKey);
-      console.log(`Access for ${item.moduleKey}: ${hasAccessResult}`);
     });
 
     // Filter menu items based on module access
     const accessibleMenuItems = menuItems.filter(item => hasAccess(item.moduleKey));
-    console.log('Number of accessible menu items:', accessibleMenuItems.length);
 
     return (
       <View style={styles.tabContent}>
@@ -463,11 +466,6 @@ export default function EmployeeMenu() {
 
       <View style={[styles.header, { backgroundColor: theme.colors.background.primary }]}>
         <View style={styles.logoContainer}>
-          <Image 
-            source={require('../../assets/images/logo/mcsb.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
           <Text style={[styles.companyName, { color: theme.colors.text.secondary }]}>
             {companyName}
           </Text>
@@ -598,16 +596,10 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: -10, // Added negative margin to move the entire container left
-  },
-  logo: {
-    width: 100, // Smaller logo
-    height: 40,
   },
   companyName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    marginLeft: -15,
     maxWidth: 250, // Limit width to prevent overflow
   },
   profileButton: {

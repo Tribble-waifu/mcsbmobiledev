@@ -2,7 +2,7 @@
   "expo": {
     "name": "mcsbmobileapp",
     "slug": "mcsbmobileapp",
-    "version": "1.0.0",
+    "version": "1.2.3",
     "orientation": "portrait",
     "icon": "./assets/images/logo/mcsb.png",
     "scheme": "myapp",
@@ -24,7 +24,7 @@
         "android.permission.CAMERA"
       ],
       "package": "com.anonymous.mcsbmobileapp",
-      "runtimeVersion": "1.0.0"
+      "runtimeVersion": "1.2.3"
     },
     "web": {
       "bundler": "metro",
@@ -42,6 +42,7 @@
           "backgroundColor": "#ffffff"
         }
       ],
+      "expo-document-picker",
       "expo-barcode-scanner",
       "expo-localization"
     ],

@@ -21,6 +21,7 @@ import InputField from '../../components/InputField';
 import AlertMessage from '../../components/AlertMessage';
 import LoadingIndicator from '../../components/LoadingIndicator';
 import CustomAlert from '../../components/CustomAlert';
+import YearPickerModal from '../../components/YearPickerModal';
 
 // Import API and storage utilities
 import { fetchPayslips, Payslip } from '../../api/payslipApi';
@@ -44,6 +45,7 @@ const PayslipListing: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [isEditingYear, setIsEditingYear] = useState(false);
+  const [yearPickerVisible, setYearPickerVisible] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState<'success' | 'error' | 'warning' | 'info'>('info');
@@ -64,6 +66,13 @@ const PayslipListing: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Check if selected year is outside available range
+      if (!availableYears.includes(selectedYear)) {
+        setPayslips([]);
+        setLoading(false);
+        return;
+      }
       
       // Try to get payslips from storage first
       const storedPayslips = await getPayslipsForYear(selectedYear);
@@ -294,9 +303,20 @@ const PayslipListing: React.FC = () => {
       
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons 
+            name="arrow-back" 
+            size={24} 
+            color={theme.colors.primary} 
+          />
+        </TouchableOpacity>
         <Text style={[styles.title, { color: theme.colors.text.primary }]}>
           {t('payslip.myPayslips', 'My Payslips')}
         </Text>
+        <View style={styles.headerRightPlaceholder} />
       </View>
       
       {/* Year Selector */}
@@ -304,10 +324,14 @@ const PayslipListing: React.FC = () => {
         <TouchableOpacity 
           style={[
             styles.yearNavigationButton, 
-            { opacity: availableYears.indexOf(selectedYear) < availableYears.length - 1 ? 1 : 0.5 }
+            { opacity: 1 } // Always enabled
           ]}
-          onPress={goToPreviousYear}
-          disabled={availableYears.indexOf(selectedYear) >= availableYears.length - 1}
+          onPress={() => {
+            // Allow going back to any year
+            const year = parseInt(selectedYear) - 1;
+            setSelectedYear(year.toString());
+          }}
+          disabled={false} // Never disabled
         >
           <Ionicons 
             name="chevron-back" 
@@ -316,56 +340,33 @@ const PayslipListing: React.FC = () => {
           />
         </TouchableOpacity>
         
-        {isEditingYear ? (
-          <InputField
-            value={selectedYear}
-            onChangeText={handleYearChange}
-            onBlur={() => {
-              handleYearSubmit();
-              setIsEditingYear(false);
-            }}
-            onSubmitEditing={() => {
-              handleYearSubmit();
-              setIsEditingYear(false);
-            }}
-            keyboardType="numeric"
-            maxLength={4}
-            textAlign="center"
-            containerStyle={styles.yearInputContainer}
-            inputStyle={[styles.yearInput, { color: theme.colors.text.primary }]}
-            style={{ 
-              backgroundColor: theme.colors.card.background, 
-              borderRadius: 20,
-              borderWidth: 0
-            }}
-            label=""
-            autoFocus={true}
-          />
-        ) : (
-          <Button
-            title={selectedYear}
-            onPress={() => setIsEditingYear(true)}
-            variant="outline"
-            size="medium"
-            style={{
-              ...styles.yearButton,
-              backgroundColor: theme.colors.background.secondary || '#e8e8e8',
-              borderColor: 'rgba(0,0,0,0.1)'
-            }}
-            textStyle={{
-              ...styles.yearButtonText,
-              color: theme.colors.text.primary
-            }}
-          />
-        )}
+        <TouchableOpacity
+          onPress={() => setYearPickerVisible(true)}
+          style={{
+            ...styles.yearButton,
+            backgroundColor: theme.colors.background.secondary || '#e8e8e8',
+            borderColor: 'rgba(0,0,0,0.1)'
+          }}
+        >
+          <Text style={{
+            ...styles.yearButtonText,
+            color: theme.colors.text.primary
+          }}>
+            {selectedYear}
+          </Text>
+        </TouchableOpacity>
         
         <TouchableOpacity 
           style={[
             styles.yearNavigationButton, 
-            { opacity: availableYears.indexOf(selectedYear) > 0 ? 1 : 0.5 }
+            { opacity: 1 } // Always enabled
           ]}
-          onPress={goToNextYear}
-          disabled={availableYears.indexOf(selectedYear) <= 0}
+          onPress={() => {
+            // Allow going forward to any year, including future years
+            const year = parseInt(selectedYear) + 1;
+            setSelectedYear(year.toString());
+          }}
+          disabled={false} // Never disabled
         >
           <Ionicons 
             name="chevron-forward" 
@@ -374,6 +375,19 @@ const PayslipListing: React.FC = () => {
           />
         </TouchableOpacity>
       </View>
+      
+      {/* Year Picker Modal */}
+      <YearPickerModal
+        visible={yearPickerVisible}
+        onClose={() => setYearPickerVisible(false)}
+        onSelectYear={(year) => {
+          setSelectedYear(year.toString());
+          setYearPickerVisible(false);
+        }}
+        selectedYear={parseInt(selectedYear)}
+        minYear={1970}
+        maxYear={new Date().getFullYear() + 5}
+      />
       
       {/* Content */}
       {loading && !refreshing ? (
@@ -418,11 +432,26 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 4,
+    textAlign: 'center',
+    flex: 1,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerRightPlaceholder: {
+    width: 40,
   },
   yearSelectorContainer: {
     flexDirection: 'row',
@@ -562,6 +591,84 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 16,
+  },
+  // Add the new calendar-style year picker styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  yearPickerModal: {
+    width: '80%',
+    borderRadius: 12,
+    padding: 16,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  yearPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  yearPickerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  calendarYearContainer: {
+    width: '100%',
+  },
+  decadeNavigation: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  decadeNavButton: {
+    padding: 8,
+    width: 40,
+    alignItems: 'center',
+  },
+  decadeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  yearGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  yearGridItem: {
+    width: '25%',
+    padding: 8,
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+  },
+  yearOutOfRange: {
+    opacity: 0.5,
+  },
+  yearSelected: {
+    backgroundColor: '#4285F4',
+    borderRadius: 8,
+  },
+  yearGridText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
 
