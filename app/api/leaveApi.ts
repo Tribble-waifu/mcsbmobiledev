@@ -519,12 +519,73 @@ export const checkLeaveDateValidation = async (
     
     if (response.data.success) {
       console.log('Leave date validation response:', response.data.data);
+      
+      // Modify the response to make all days available regardless of isWorkingDay flag
+      const modifiedData = response.data.data.map(item => ({
+        ...item,
+        // Consider a date available if it's not a holiday and doesn't have existing leave
+        isAvailable: !item.isHoliday && (!item.leaveAppList || item.leaveAppList.length === 0)
+      }));
+      
       return response.data.data;
     } else {
       throw new Error(response.data.message || 'Failed to validate leave dates');
     }
   } catch (error) {
     console.error('Error validating leave dates:', error);
+    throw error;
+  }
+};
+
+/**
+ * Cancel a leave application
+ * @param leaveId The ID of the leave application to cancel
+ * @param reason The reason for cancellation
+ * @returns Promise with the response data or error
+ */
+export const cancelLeave = async (leaveId: number, reason: string): Promise<any> => {
+  try {
+    // Get authentication data from storage
+    const baseUrl = await getBaseUrl();
+    const token = await getUserToken();
+    const employeeId = await getEmployeeId();
+    
+    if (!baseUrl || !token || !employeeId) {
+      throw new Error('Missing required authentication data');
+    }
+    
+    // Construct the URL for cancelling leave application
+    const url = `${baseUrl}/v1/employees/${employeeId}/leaves/${leaveId}/cancel`;
+    
+    // Create request body
+    const requestBody = {
+      reason: reason
+    };
+    
+    console.log(`Cancelling leave application with ID ${leaveId}`);
+    
+    // Make the API request
+    const response = await axios.put(
+      url,
+      requestBody,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+    
+    if (response.data.success) {
+      // Refresh leave history after successful cancellation
+      const currentYear = new Date().getFullYear();
+      await getLeaveHistory(currentYear);
+      return response.data;
+    } else {
+      throw new Error(response.data.message || 'Failed to cancel leave application');
+    }
+  } catch (error) {
+    console.error('Error cancelling leave application:', error);
     throw error;
   }
 };

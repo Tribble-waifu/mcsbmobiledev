@@ -8,7 +8,8 @@ import {
   RefreshControl,
   StatusBar,
   Dimensions,
-  ActivityIndicator
+  ActivityIndicator,
+  TextInput
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,6 +64,11 @@ export default function ViewLeaveApplication() {
   const [detailsVisible, setDetailsVisible] = useState<number | null>(null);
   // Add isEditingYear state
   const [isEditingYear, setIsEditingYear] = useState(false);
+  // Add these state variables at the top with other state declarations
+  const [reasonInputVisible, setReasonInputVisible] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [yearPickerVisible, setYearPickerVisible] = useState(false);
+  const [currentDecade, setCurrentDecade] = useState(Math.floor(new Date().getFullYear() / 10) * 10);
 
   // Load leave history
   const loadLeaveHistory = useCallback(async () => {
@@ -129,6 +135,18 @@ export default function ViewLeaveApplication() {
   // Handle cancel leave request
   const handleCancelRequest = (leaveId: number) => {
     setSelectedLeaveId(leaveId);
+    setCancellationReason(''); // Reset reason
+    setReasonInputVisible(true); // Show reason input popup first
+  };
+
+  // Handle reason confirmation
+  const confirmReason = () => {
+    if (!cancellationReason.trim()) {
+      showAlert('error', t('leave.reasonRequired', 'Please provide a reason for cancellation'));
+      return;
+    }
+    
+    setReasonInputVisible(false);
     setConfirmAlertMessage(t('leave.confirmCancelRequest', 'Are you sure you want to cancel this leave request?'));
     setConfirmAlertVisible(true);
   };
@@ -138,9 +156,22 @@ export default function ViewLeaveApplication() {
     if (selectedLeaveId) {
       try {
         setLoading(true);
-        await cancelLeaveRequest(selectedLeaveId);
+        
+        // Use the cancelLeave function from leaveApi.ts
+        const { cancelLeave } = require('../../api/leaveApi');
+        
+        // Call the API function with the user-provided reason
+        const response = await cancelLeave(selectedLeaveId, cancellationReason);
+        
         setConfirmAlertVisible(false);
-        showAlert('success', t('leave.requestCancelled', 'Leave request cancelled successfully'));
+        
+        if (response && response.success) {
+          showAlert('success', t('leave.requestCancelled', 'Leave request cancelled successfully'));
+        } else {
+          showAlert('error', response.message || t('leave.errorCancellingRequest', 'Error cancelling leave request'));
+        }
+        
+        // Refresh the leave history
         await loadLeaveHistory();
       } catch (error) {
         console.error('Error cancelling leave request:', error);
@@ -330,10 +361,6 @@ export default function ViewLeaveApplication() {
     );
   };
   
-  // Add these state variables at the top with other state declarations
-  const [yearPickerVisible, setYearPickerVisible] = useState(false);
-  const [currentDecade, setCurrentDecade] = useState(Math.floor(new Date().getFullYear() / 10) * 10);
-  
   // Add decade navigation functions
   const goToPreviousDecade = useCallback(() => {
     setCurrentDecade(prev => prev - 10);
@@ -420,6 +447,49 @@ export default function ViewLeaveApplication() {
         minYear={2000}
         maxYear={new Date().getFullYear() + 1}
       />
+    
+    {/* Reason Input Popup */}
+    {reasonInputVisible && (
+      <View style={[styles.confirmAlertContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+        <View style={[styles.confirmAlertBox, { backgroundColor: theme.colors.card.background }]}>
+          <Text style={[styles.confirmAlertTitle, { color: theme.colors.text.primary }]}>
+            {t('leave.enterCancellationReason', 'Enter Cancellation Reason')}
+          </Text>
+          <TextInput
+            style={[
+              styles.reasonInput,
+              { 
+                backgroundColor: theme.colors.background.secondary,
+                color: theme.colors.text.primary,
+                borderColor: theme.colors.border.medium
+              }
+            ]}
+            placeholder={t('leave.cancellationReasonPlaceholder', 'Please provide a reason...')}
+            placeholderTextColor={theme.colors.text.secondary}
+            value={cancellationReason}
+            onChangeText={setCancellationReason}
+            multiline
+            numberOfLines={3}
+          />
+          <View style={styles.confirmAlertButtons}>
+            <Button
+              title={t('common.cancel', 'Cancel')}
+              onPress={() => setReasonInputVisible(false)}
+              variant="outline"
+              size="small"
+              style={styles.confirmAlertButton}
+            />
+            <Button
+              title={t('common.confirm', 'Confirm')}
+              onPress={confirmReason}
+              variant="primary"
+              size="small"
+              style={styles.confirmAlertButton}
+            />
+          </View>
+        </View>
+      </View>
+    )}
     
     {confirmAlertVisible && (
       <View style={[styles.confirmAlertContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
@@ -842,5 +912,13 @@ modalOverlay: {
     borderRadius: 20,
     paddingVertical: 4,
     paddingHorizontal: 8,
+  },
+  reasonInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginVertical: 16,
+    textAlignVertical: 'top',
+    minHeight: 80,
   },
 });

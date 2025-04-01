@@ -87,8 +87,18 @@ export default function LeaveDetail() {
 
   // Handle cancel leave request
   const handleCancelRequest = () => {
-    setConfirmAlertMessage(t('leave.confirmCancelRequest', 'Are you sure you want to cancel this leave request?'));
-    setConfirmAlertVisible(true);
+    // Navigate to CancelLeaveApplication screen with leave details
+    if (leaveDetail) {
+      router.push({
+        pathname: "/modules/leave/CancelLeaveApplication",
+        params: {
+          id: leaveDetail.id,
+          leaveType: leaveDetail.leaveCodeDesc,
+          dateFrom: formatDate(leaveDetail.dateFrom),
+          dateTo: formatDate(leaveDetail.dateTo)
+        }
+      });
+    }
   };
 
   // Confirm cancel leave request
