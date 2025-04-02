@@ -197,7 +197,8 @@
     "no": "否",
     "goBack": "返回",
     "errorLoadingData": "加载数据时出错",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "menu": "菜单"
   },
   "logout": "退出登录"
 }

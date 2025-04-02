@@ -196,7 +196,8 @@
     "yes": "Ya",
     "no": "Tidak",
     "goBack": "Kembali",
-    "errorLoadingData": "Ralat memuatkan data"
+    "errorLoadingData": "Ralat memuatkan data",
+    "menu": "Menu"
   },
   "logout": "Log Keluar"
 }

@@ -18,6 +18,9 @@ import { credentialLogin } from '../api/loginApi';
 // Import i18n configuration
 import '../locales/i18n';
 
+// Import Constants to access app.json information
+import Constants from 'expo-constants';
+
 export default function Login() {
   const { t } = useTranslation();
   const { theme } = useTheme();  // Extract theme from the returned context
@@ -214,7 +217,9 @@ export default function Login() {
   
       {/* Footer */}
       <View style={styles.footer}>
-        {/* Footer content */}
+        <Text style={[styles.footerText, { color: theme.colors.text.secondary }]}>
+          v{appVersion}
+        </Text>
       </View>
   
       {/* Overlay loading indicator that appears when isLoading is true */}
@@ -334,3 +339,6 @@ const styles = StyleSheet.create({
   },
   // Remove the loaderWrapper style from here since we're defining it inside the component
 });
+
+// Get app version from app.json
+const appVersion = Constants.expoConfig?.version || '1.0.0';

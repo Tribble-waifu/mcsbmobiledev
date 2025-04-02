@@ -196,7 +196,8 @@
     "no": "No",
     "goBack": "Go Back",
     "errorLoadingData": "Error loading data",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "menu": "Menu"
   },
   "logout": "Logout"
 }

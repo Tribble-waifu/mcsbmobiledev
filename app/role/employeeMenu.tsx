@@ -261,7 +261,7 @@ export default function EmployeeMenu() {
         id: 'noticeboard', 
         title: t('employee.noticeboard'), 
         icon: 'notifications-outline', 
-        route: '/modules/employee/noticeboard',
+        route: '/modules/noticeboard/nbList',
         color: '#FF9800',
         description: t('employee.noticeboardDescription') || 'View company announcements',
         moduleKey: 'noticeBoard'
@@ -355,14 +355,6 @@ export default function EmployeeMenu() {
             </View>
           )}
         </View>
-
-        <Button
-          title={t('common.logout')}
-          onPress={handleLogout}
-          variant="primary"
-          icon="log-out-outline"
-          style={styles.logoutButton}
-        />
       </View>
     );
   };
@@ -395,10 +387,11 @@ export default function EmployeeMenu() {
           elevation={3}
           borderRadius={16}
         >
+          {/*Update the title in the settings tab content*/}
           <View style={styles.settingsHeader}>
             <Ionicons name="settings" size={40} color={theme.colors.primary} />
             <Text style={[styles.settingsTitle, { color: theme.colors.text.primary }]}>
-              {t('common.settings')}
+              {t('common.menu', 'Menu')}
             </Text>
           </View>
           
@@ -478,14 +471,25 @@ export default function EmployeeMenu() {
         </TouchableOpacity>
       </View>
 
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {activeTab === 'dashboard' 
+          ? renderDashboardTab() 
+          : activeTab === 'timesheet' 
+            ? renderTimesheetTab() 
+            : renderSettingsTab()}
+      </ScrollView>
+
+      {/* Moved tab bar from top to bottom */}
       <View style={[styles.tabBar, { 
         backgroundColor: theme.colors.background.primary,
-        borderBottomColor: theme.colors.border.light,
+        borderTopColor: theme.colors.border.light,
+        borderTopWidth: 1,
+        borderBottomWidth: 0,
       }]}>
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'dashboard' && [styles.activeTabButton, { borderBottomColor: theme.colors.primary }]
+            activeTab === 'dashboard' && [styles.activeTabButton, { borderTopColor: theme.colors.primary, borderBottomColor: 'transparent' }]
           ]}
           onPress={() => handleTabChange('dashboard')}
         >
@@ -509,7 +513,7 @@ export default function EmployeeMenu() {
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'timesheet' && [styles.activeTabButton, { borderBottomColor: theme.colors.primary }]
+            activeTab === 'timesheet' && [styles.activeTabButton, { borderTopColor: theme.colors.primary, borderBottomColor: 'transparent' }]
           ]}
           onPress={() => handleTabChange('timesheet')}
         >
@@ -530,15 +534,17 @@ export default function EmployeeMenu() {
           </Text>
         </TouchableOpacity>
 
+        {/* Remove the settings header that was incorrectly placed here */}
+        
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'settings' && [styles.activeTabButton, { borderBottomColor: theme.colors.primary }]
+            activeTab === 'settings' && [styles.activeTabButton, { borderTopColor: theme.colors.primary, borderBottomColor: 'transparent' }]
           ]}
           onPress={() => handleTabChange('settings')}
         >
           <Ionicons 
-            name="settings-outline" 
+            name="menu-outline" 
             size={20} 
             color={activeTab === 'settings' ? theme.colors.primary : theme.colors.text.secondary} 
           />
@@ -550,18 +556,10 @@ export default function EmployeeMenu() {
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {t('common.settings')}
+            {t('common.menu', 'Menu')}
           </Text>
         </TouchableOpacity>
       </View>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {activeTab === 'dashboard' 
-          ? renderDashboardTab() 
-          : activeTab === 'timesheet' 
-            ? renderTimesheetTab() 
-            : renderSettingsTab()}
-      </ScrollView>
 
       <AlertMessage
         visible={alertVisible}
@@ -610,6 +608,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 1,
     width: '100%',
+    // Changed from top to bottom positioning
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   tabButton: {
     flexDirection: 'row',
@@ -619,7 +622,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activeTabButton: {
-    borderBottomWidth: 3,
+    // Changed from borderBottomWidth to borderTopWidth
+    borderTopWidth: 3,
+    borderBottomWidth: 0,
   },
   tabButtonText: {
     marginLeft: 4,
@@ -689,10 +694,6 @@ const styles = StyleSheet.create({
   settingsButton: {
     flex: 1,
     marginRight: 8,
-  },
-  logoutButton: {
-    flex: 1,
-    marginLeft: 8,
   },
   comingSoonCard: {
     padding: 30,

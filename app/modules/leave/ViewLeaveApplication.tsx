@@ -575,14 +575,14 @@ export default function ViewLeaveApplication() {
               <Text style={[styles.emptySubtitle, { color: theme.colors.text.secondary }]}>
                 {t('leave.noLeaveApplicationsDesc', 'You have not applied for any leave during this period.')}
               </Text>
-              <Button
-                title={t('leave.applyLeave', 'Apply for Leave')}
-                onPress={() => router.push('/modules/leave/applyLeave' as any)}
-                variant="primary"
-                size="medium"
-                icon="add-circle-outline"
-                style={styles.applyButton}
-              />
+                <Button
+                  title={t('leave.createLeaveApplication', 'Create Leave Application')}
+                  onPress={() => router.push('/modules/leave/CreateLeaveApplication')}
+                  variant="primary"
+                  size="medium"
+                  icon="add-circle-outline"
+                  style={styles.applyButton}
+                />
             </View>
           )}
         />
