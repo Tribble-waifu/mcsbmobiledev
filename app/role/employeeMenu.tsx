@@ -270,7 +270,7 @@ export default function EmployeeMenu() {
         id: 'attendance', 
         title: t('employee.attendance'), 
         icon: 'time-outline', 
-        route: '/modules/employee/attendance',
+        route: '/modules/attendance/atMenu',
         color: '#9C27B0',
         description: t('employee.attendanceDescription') || 'Check your attendance records',
         moduleKey: 'clockInOut'

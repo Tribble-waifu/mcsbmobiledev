@@ -4,17 +4,15 @@ import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import useTheme from '../../themes/useTheme';
-import { getUserRoles, getUserToken, getBaseUrl } from '../../utils/authStorage';
+import { getUserRoles, getUserToken } from '../../utils/authStorage';
 import { getEmployeeName, getCompanyName } from '../../utils/employeeStorage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import components
-import Button from '../../components/Button';
 import Card from '../../components/Card';
 import AlertMessage from '../../components/AlertMessage';
 import LoadingIndicator from '../../components/LoadingIndicator';
 
-export default function LeaveMenu() {
+export default function AttendanceMenu() {
   const { t } = useTranslation();
   const { theme, isDark } = useTheme();
   const [loading, setLoading] = useState(true);
@@ -41,10 +39,11 @@ export default function LeaveMenu() {
         }
         
         // Check if user has approver role
-        // This is a simple check - you might need to adjust based on your actual role names
-        const hasApproverRole = roles.some(role =>  
-          role.toLowerCase().includes('approval') ||
-          role.toLowerCase().includes('employee')
+        const hasApproverRole = roles.some(role => 
+          role.toLowerCase().includes('manager') || 
+          role.toLowerCase().includes('supervisor') || 
+          role.toLowerCase().includes('approver') ||
+          role.toLowerCase().includes('admin')
         );
         
         setIsApprover(hasApproverRole);
@@ -65,54 +64,60 @@ export default function LeaveMenu() {
 
   // Define menu items with their corresponding routes and access levels
   const getMenuItems = () => {
-    
     const menuItems = [
       { 
-        id: 'apply_leave', 
-        title: t('leave.applyLeave', 'Create Leave Application'), 
-        icon: 'add-circle-outline', 
-        route: '/modules/leave/CreateLeaveApplication',
-        color: '#4CAF50',
-        description: t('leave.applyLeaveDesc', 'Submit a new leave application'),
-        forApprovers: false,
-        forEmployees: true
-      },
-      { 
-        id: 'leave_balance', 
-        title: t('leave.leaveBalance', 'View Leave Balance'), 
-        icon: 'calendar-outline', 
-        route: '/modules/leave/LeaveEntitlement',
-        color: '#2196F3',
-        description: t('leave.leaveBalanceDesc', 'View your available leave balance'),
-        forApprovers: false,
-        forEmployees: true
-      },
-      { 
-        id: 'leave_history', 
-        title: t('leave.leaveHistory', 'View Leave Applications'), 
+        id: 'clock_in_out', 
+        title: t('attendance.clockInOut', 'Clock In / Out'), 
         icon: 'time-outline', 
-        route: '/modules/leave/ViewLeaveApplication',
-        color: '#9C27B0',
-        description: t('leave.leaveHistoryDesc', 'View your leave application history'),
+        route: '/modules/attendance/clockInOut',
+        color: '#4CAF50',
+        description: t('attendance.clockInOutDesc', 'Record your daily attendance'),
         forApprovers: false,
         forEmployees: true
       },
       { 
-        id: 'approve_leave', 
-        title: t('leave.approveLeave', 'Approve Leave Applications'), 
-        icon: 'checkmark-circle-outline', 
-        route: '/modules/leave/approveLeave',
+        id: 'time_log', 
+        title: t('attendance.timeLog', 'Time Log'), 
+        icon: 'calendar-outline', 
+        route: '/modules/attendance/timeLog',
+        color: '#2196F3',
+        description: t('attendance.timeLogDesc', 'View your attendance history'),
+        forApprovers: false,
+        forEmployees: true
+      },
+      { 
+        id: 'overtime', 
+        title: t('attendance.overtime', 'Overtime'), 
+        icon: 'hourglass-outline', 
+        route: '/modules/attendance/overtime',
+        color: '#9C27B0',
+        description: t('attendance.overtimeDesc', 'Apply for and view overtime records'),
+        forApprovers: false,
+        forEmployees: true
+      },
+      { 
+        id: 'team_attendance', 
+        title: t('attendance.teamAttendance', 'Team Attendance'), 
+        icon: 'people-outline', 
+        route: '/modules/attendance/teamAttendance',
         color: '#E91E63',
-        description: t('leave.approveLeaveDesc', 'Review and approve team leave requests'),
+        description: t('attendance.teamAttendanceDesc', 'View and manage team attendance'),
+        forApprovers: true,
+        forEmployees: false
+      },
+      { 
+        id: 'attendance_reports', 
+        title: t('attendance.reports', 'Attendance Reports'), 
+        icon: 'bar-chart-outline', 
+        route: '/modules/attendance/reports',
+        color: '#FF9800',
+        description: t('attendance.reportsDesc', 'Generate attendance reports'),
         forApprovers: true,
         forEmployees: false
       }
     ];
 
     // Filter items based on user role
-    // Only show items that are either:
-    // 1. For all employees (forEmployees: true) OR
-    // 2. For approvers (forApprovers: true) AND the user is an approver
     const filteredItems = menuItems.filter(item => 
       (item.forEmployees) || (item.forApprovers && isApprover)
     );
@@ -127,8 +132,6 @@ export default function LeaveMenu() {
   };
 
   const navigateTo = (route: string) => {
-    // Cast the route string to any to bypass TypeScript's strict route type checking
-    // This is necessary because we're using dynamic routes that TypeScript can't validate at compile time
     router.push(route as any);
   };
 
@@ -168,7 +171,7 @@ export default function LeaveMenu() {
           />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.colors.text.primary }]}>
-          {t('leave.leaveManagement', 'Leave Management')}
+          {t('attendance.attendanceManagement', 'Attendance Management')}
         </Text>
       </View>
 
@@ -207,7 +210,7 @@ export default function LeaveMenu() {
           </Card>
 
           <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>
-            {t('leave.leaveOptions', 'Leave Options')}
+            {t('attendance.attendanceOptions', 'Attendance Options')}
           </Text>
 
           <View style={styles.menuGrid}>
@@ -233,12 +236,11 @@ export default function LeaveMenu() {
                       {item.description}
                     </Text>
                   </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
                 </TouchableOpacity>
               </Card>
             ))}
           </View>
-
-          {/* Removing the large back button at the bottom */}
         </ScrollView>
       )}
     </View>
@@ -329,12 +331,5 @@ const styles = StyleSheet.create({
   },
   menuItemDescription: {
     fontSize: 14,
-  },
-  buttonContainer: {
-    marginTop: 20,
-    marginBottom: 40,
-  },
-  backButtonLarge: {
-    marginTop: 10,
   },
 });
