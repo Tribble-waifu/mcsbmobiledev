@@ -10,7 +10,8 @@ import {
   FlatList,
   TextInput,
   Platform,
-  Image
+  Image,
+  KeyboardAvoidingView
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -570,6 +571,11 @@ const CreateLeaveApplication: React.FC = () => {
     };
   
   return (
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
     <View style={[styles.container, { backgroundColor: theme.colors.background.primary }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.card.background }]}>
@@ -995,23 +1001,24 @@ const CreateLeaveApplication: React.FC = () => {
         </View>
       </Modal>
 
-      <Modal
-        visible={showToDatePicker}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowToDatePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <DateCalendar
-            selectedDate={toDate}
-            onDateChange={handleToDateChange}
-            minDate={fromDate}
-            onClose={() => setShowToDatePicker(false)}
-            title={t('leave.selectEndDate', 'Select End Date')}
-          />
-        </View>
-      </Modal>
+        <Modal
+          visible={showToDatePicker}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowToDatePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <DateCalendar
+              selectedDate={toDate}
+              onDateChange={handleToDateChange}
+              minDate={fromDate}
+              onClose={() => setShowToDatePicker(false)}
+              title={t('leave.selectEndDate', 'Select End Date')}
+            />
+          </View>
+        </Modal>
     </View>
+    </KeyboardAvoidingView>
   );
 };
 

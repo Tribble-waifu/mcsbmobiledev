@@ -41,6 +41,7 @@ export default function ClockInOutScreen() {
   const [alertType, setAlertType] = useState<'success' | 'error' | 'warning' | 'info'>('info');
   const [officeLocations, setOfficeLocations] = useState<OfficeLocation[]>([]);
   const [selectedOffice, setSelectedOffice] = useState<OfficeLocation | null>(null);
+  const [gpsNotAvailable, setGpsNotAvailable] = useState(false);
   
   // Default map region (will be updated with actual data)
   const defaultRegion = {
@@ -171,67 +172,108 @@ export default function ClockInOutScreen() {
     );
   };
   
-  const performClockAction = async (action: 'in' | 'out') => {
-    setClockingInProgress(true);
+  const toggleGpsAvailability = () => {
+      setGpsNotAvailable(!gpsNotAvailable);
+      if (!gpsNotAvailable) {
+        // If turning GPS off, show a message
+        showAlert('warning', t('attendance.gpsDisabled', 'GPS has been marked as unavailable'));
+      } else {
+        // If turning GPS back on, try to get location again
+        getLocationUpdate();
+      }
+    };
     
-    try {
-      // Check if location is available
-      if (!location) {
-        try {
-          const currentLocation = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High
-          });
-          setLocation(currentLocation);
-        } catch (error) {
-          console.error('Error getting location:', error);
-          showAlert('error', 'Could not get your location. Please try again.');
-          setClockingInProgress(false);
+    const getLocationUpdate = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setErrorMsg('Permission to access location was denied');
           return;
         }
-      }
-      
-      // Check if user is within geofence of selected office
-      let isOutOfFence = true;
-      let officeName = selectedOffice?.name || 'Unknown Office';
-      
-      if (location && selectedOffice) {
-        const distance = calculateDistance(
-          location.coords.latitude,
-          location.coords.longitude,
-          selectedOffice.latitude,
-          selectedOffice.longitude
-        );
-        isOutOfFence = distance > selectedOffice.radius;
         
-        // If out of fence but override is allowed
-        if (isOutOfFence && selectedOffice.outOfFenceOverride) {
-          isOutOfFence = false;
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High
+        });
+        setLocation(currentLocation);
+        
+        // Animate map to current location
+        if (mapRef.current) {
+          mapRef.current.animateToRegion({
+            latitude: currentLocation.coords.latitude,
+            longitude: currentLocation.coords.longitude,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          }, 1000);
         }
+      } catch (error) {
+        console.error('Error getting location update:', error);
+        setErrorMsg('Could not get location');
       }
+    };
+    
+    // Fix for the clockInOut function call - remove the 6th parameter
+    const performClockAction = async (action: 'in' | 'out') => {
+      setClockingInProgress(true);
       
-      // Call the API
-      const response = await clockInOut(
-        undefined, // frontPhoto - not implemented yet
-        undefined, // backPhoto - not implemented yet
-        officeName, // authorizeZoneName
-        isOutOfFence,
-        false // isCameraBroken
-      );
-      
-      if (response.success) {
-        setLastAction(action);
-        setLastActionTime(new Date().toISOString());
-        showAlert('success', response.message);
-      } else {
-        showAlert('error', response.message);
+      try {
+        // Check if location is available and GPS is not marked as unavailable
+        if (!location && !gpsNotAvailable) {
+          try {
+            const currentLocation = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High
+            });
+            setLocation(currentLocation);
+          } catch (error) {
+            console.error('Error getting location:', error);
+            showAlert('error', 'Could not get your location. Please try again or mark GPS as unavailable.');
+            setClockingInProgress(false);
+            return;
+          }
+        }
+        
+        // Check if user is within geofence of selected office
+        let isOutOfFence = true;
+        let officeName = selectedOffice?.name || 'Unknown Office';
+        
+        if (location && selectedOffice && !gpsNotAvailable) {
+          const distance = calculateDistance(
+            location.coords.latitude,
+            location.coords.longitude,
+            selectedOffice.latitude,
+            selectedOffice.longitude
+          );
+          isOutOfFence = distance > selectedOffice.radius;
+          
+          // If out of fence but override is allowed
+          if (isOutOfFence && selectedOffice.outOfFenceOverride) {
+            isOutOfFence = false;
+          }
+        }
+        
+        // Call the API
+        // Call the API with 5 parameters instead of 6
+        const response = await clockInOut(
+          undefined, // frontPhoto - not implemented yet
+          undefined, // backPhoto - not implemented yet
+          officeName, // authorizeZoneName
+          isOutOfFence,
+          gpsNotAvailable // isCameraBroken - repurpose this parameter for GPS availability
+        );
+        
+        if (response.success) {
+          setLastAction(action);
+          setLastActionTime(new Date().toISOString());
+          showAlert('success', response.message);
+        } else {
+          showAlert('error', response.message);
+        }
+      } catch (error) {
+        console.error('Error during clock action:', error);
+        showAlert('error', 'An unexpected error occurred');
+      } finally {
+        setClockingInProgress(false);
       }
-    } catch (error) {
-      console.error('Error during clock action:', error);
-      showAlert('error', 'An unexpected error occurred');
-    } finally {
-      setClockingInProgress(false);
-    }
-  };
+    };
   
   // Calculate distance between two coordinates in meters
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -371,6 +413,26 @@ export default function ClockInOutScreen() {
                 {t('attendance.nearestOffice', 'Nearest office')}: {selectedOffice.name}
               </Text>
             )}
+            
+            {/* GPS Toggle Button */}
+            <TouchableOpacity
+              style={[
+                styles.gpsToggleButton,
+                { backgroundColor: gpsNotAvailable ? theme.colors.status.error : theme.colors.status.success }
+              ]}
+              onPress={toggleGpsAvailability}
+            >
+              <Ionicons
+                name={gpsNotAvailable ? "close-circle" : "location"} // Using "close-circle" instead of "location-slash"
+                size={16}
+                color="#fff"
+              />
+              <Text style={styles.gpsToggleText}>
+                {gpsNotAvailable 
+                  ? t('attendance.gpsNotAvailable', 'GPS Not Available') 
+                  : t('attendance.gpsAvailable', 'GPS Available')}
+              </Text>
+            </TouchableOpacity>
             
             {errorMsg ? (
               <View style={styles.errorContainer}>
@@ -583,5 +645,19 @@ const styles = StyleSheet.create({
   },
   locationInfoText: {
     fontSize: 12,
+  },
+  gpsToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignSelf: 'center',
+  },
+  gpsToggleText: {
+    color: '#fff',
+    fontWeight: '500',
+    marginLeft: 8,
   },
 });

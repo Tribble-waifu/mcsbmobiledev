@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Platform } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -211,12 +211,15 @@ export default function ProfileSwitch() {
         }}
       />
       
-      <AlertMessage
-        visible={alertVisible}
-        type={alertType}
-        message={alertMessage}
-        onClose={() => setAlertVisible(false)}
-      />
+      {/* Wrap AlertMessage in a View with iOS-specific padding */}
+      <View style={Platform.OS === 'ios' ? styles.alertWrapper : undefined}>
+        <AlertMessage
+          visible={alertVisible}
+          type={alertType}
+          message={alertMessage}
+          onClose={() => setAlertVisible(false)}
+        />
+      </View>
 
       <View style={styles.header}>
         <Image 
@@ -283,6 +286,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+  // Add alertWrapper style for iOS
+  alertWrapper: {
+    paddingTop: 50, // Add top padding for iOS to avoid status bar
   },
   header: {
     alignItems: 'center',
@@ -374,5 +381,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     marginTop: 16,
-  }
+  },  // Add comma here
+  
+  // Add iOS-specific alert style
+  iOSAlert: {
+    marginBottom: 50, // Add bottom margin to avoid the dock
+  },
 });

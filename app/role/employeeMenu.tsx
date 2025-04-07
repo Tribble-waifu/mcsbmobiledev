@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar, Platform } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -485,6 +485,8 @@ export default function EmployeeMenu() {
         borderTopColor: theme.colors.border.light,
         borderTopWidth: 1,
         borderBottomWidth: 0,
+        // Add platform-specific padding for iOS
+        paddingBottom: Platform.OS === 'ios' ? 25 : 0
       }]}>
         <TouchableOpacity
           style={[
@@ -497,6 +499,7 @@ export default function EmployeeMenu() {
             name="grid-outline" 
             size={20} 
             color={activeTab === 'dashboard' ? theme.colors.primary : theme.colors.text.secondary} 
+            style={styles.tabIcon} // Add this style
           />
           <Text 
             style={[
@@ -521,6 +524,7 @@ export default function EmployeeMenu() {
             name="time-outline" 
             size={20} 
             color={activeTab === 'timesheet' ? theme.colors.primary : theme.colors.text.secondary} 
+            style={styles.tabIcon} // Add this style
           />
           <Text 
             style={[
@@ -762,5 +766,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 24,
+  },
+  tabIcon: {
+    marginTop: 2,
   },
 });

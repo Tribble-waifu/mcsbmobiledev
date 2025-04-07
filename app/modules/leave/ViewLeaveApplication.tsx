@@ -9,7 +9,9 @@ import {
   StatusBar,
   Dimensions,
   ActivityIndicator,
-  TextInput
+  TextInput,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -204,6 +206,8 @@ export default function ViewLeaveApplication() {
   const renderLeaveItem = ({ item }: { item: LeaveHistory }) => {
     const isExpanded = detailsVisible === item.id;
     const isPending = item.approvalStatus === 'P';
+    const isApproved = item.approvalStatus === 'A';
+    const canBeCancelled = isPending || isApproved;
     const statusColor = STATUS_COLORS[item.approvalStatus as keyof typeof STATUS_COLORS] || '#9E9E9E';
     
     return (
@@ -297,7 +301,7 @@ export default function ViewLeaveApplication() {
               </View>
             )}
             
-            {isPending && (
+            {canBeCancelled && (
               <Button
                 title={t('leave.cancelRequest', 'Cancel Request')}
                 onPress={() => handleCancelRequest(item.id)}
@@ -417,179 +421,185 @@ export default function ViewLeaveApplication() {
 
   // Add the return statement for the component
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background.primary }]}>
-    <Stack.Screen 
-      options={{
-        headerShown: false,
-      }}
-    />
-    
-    <StatusBar
-      barStyle={isDark ? 'light-content' : 'dark-content'}
-      backgroundColor={theme.colors.background.primary}
-    />
-    
-    <AlertMessage
-      visible={alertVisible}
-      type={alertType}
-      message={alertMessage}
-      onClose={() => setAlertVisible(false)}
-    />
-
-    <YearPickerModal
-        visible={yearPickerVisible}
-        onClose={() => setYearPickerVisible(false)}
-        onSelectYear={(year) => {
-          changeYear(year);
-          setYearPickerVisible(false);
-        }}
-        selectedYear={selectedYear}
-        minYear={2000}
-        maxYear={new Date().getFullYear() + 1}
-      />
-    
-    {/* Reason Input Popup */}
-    {reasonInputVisible && (
-      <View style={[styles.confirmAlertContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-        <View style={[styles.confirmAlertBox, { backgroundColor: theme.colors.card.background }]}>
-          <Text style={[styles.confirmAlertTitle, { color: theme.colors.text.primary }]}>
-            {t('leave.enterCancellationReason', 'Enter Cancellation Reason')}
-          </Text>
-          <TextInput
-            style={[
-              styles.reasonInput,
-              { 
-                backgroundColor: theme.colors.background.secondary,
-                color: theme.colors.text.primary,
-                borderColor: theme.colors.border.medium
-              }
-            ]}
-            placeholder={t('leave.cancellationReasonPlaceholder', 'Please provide a reason...')}
-            placeholderTextColor={theme.colors.text.secondary}
-            value={cancellationReason}
-            onChangeText={setCancellationReason}
-            multiline
-            numberOfLines={3}
-          />
-          <View style={styles.confirmAlertButtons}>
-            <Button
-              title={t('common.cancel', 'Cancel')}
-              onPress={() => setReasonInputVisible(false)}
-              variant="outline"
-              size="small"
-              style={styles.confirmAlertButton}
-            />
-            <Button
-              title={t('common.confirm', 'Confirm')}
-              onPress={confirmReason}
-              variant="primary"
-              size="small"
-              style={styles.confirmAlertButton}
-            />
-          </View>
-        </View>
-      </View>
-    )}
-    
-    {confirmAlertVisible && (
-      <View style={[styles.confirmAlertContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-        <View style={[styles.confirmAlertBox, { backgroundColor: theme.colors.card.background }]}>
-          <Text style={[styles.confirmAlertTitle, { color: theme.colors.text.primary }]}>
-            {t('leave.confirmAction', 'Confirm Action')}
-          </Text>
-          <Text style={[styles.confirmAlertMessage, { color: theme.colors.text.secondary }]}>
-            {confirmAlertMessage}
-          </Text>
-          <View style={styles.confirmAlertButtons}>
-            <Button
-              title={t('common.no', 'No')}
-              onPress={() => setConfirmAlertVisible(false)}
-              variant="outline"
-              size="small"
-              style={styles.confirmAlertButton}
-            />
-            <Button
-              title={t('common.yes', 'Yes')}
-              onPress={confirmCancelRequest}
-              variant="primary"
-              size="small"
-              style={styles.confirmAlertButton}
-            />
-          </View>
-        </View>
-      </View>
-    )}
-    <View style={styles.header}>
-      <TouchableOpacity 
-        style={styles.backButton} 
-        onPress={() => router.back()}
-      >
-        <Ionicons 
-          name="arrow-back" 
-          size={24} 
-          color={theme.colors.text.primary} 
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <View style={[styles.container, { backgroundColor: theme.colors.background.primary }]}>
+        <Stack.Screen 
+          options={{
+            headerShown: false,
+          }}
         />
-      </TouchableOpacity>
-      <Text style={[styles.headerTitle, { color: theme.colors.text.primary }]}>
-        {t('leave.viewApplications', 'View Leave Applications')}
-      </Text>
-    </View>
-
-    {loading && !refreshing ? (
-      <View style={styles.loadingContainer}>
-        <LoadingIndicator 
-          size={60}
-          duration={600}
-          showText={true}
-        />
-      </View>
-    ) : (
-      <View style={styles.content}>
-        {renderYearSelector()}
-        {renderFilterButtons()}
         
-        <FlatList
-          data={filteredHistory}
-          renderItem={renderLeaveItem}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[theme.colors.primary]}
-              tintColor={theme.colors.primary}
-            />
-          }
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <Ionicons 
-                name="calendar-outline" 
-                size={60} 
-                color={theme.colors.text.secondary} 
-              />
-              <Text style={[styles.emptyTitle, { color: theme.colors.text.primary }]}>
-                {t('leave.noLeaveApplications', 'No Leave Applications')}
-              </Text>
-              <Text style={[styles.emptySubtitle, { color: theme.colors.text.secondary }]}>
-                {t('leave.noLeaveApplicationsDesc', 'You have not applied for any leave during this period.')}
-              </Text>
-                <Button
-                  title={t('leave.createLeaveApplication', 'Create Leave Application')}
-                  onPress={() => router.push('/modules/leave/CreateLeaveApplication')}
-                  variant="primary"
-                  size="medium"
-                  icon="add-circle-outline"
-                  style={styles.applyButton}
-                />
-            </View>
-          )}
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={theme.colors.background.primary}
         />
+        
+        <AlertMessage
+          visible={alertVisible}
+          type={alertType}
+          message={alertMessage}
+          onClose={() => setAlertVisible(false)}
+        />
+
+        <YearPickerModal
+          visible={yearPickerVisible}
+          onClose={() => setYearPickerVisible(false)}
+          onSelectYear={(year) => {
+            changeYear(year);
+            setYearPickerVisible(false);
+          }}
+          selectedYear={selectedYear}
+          minYear={2000}
+          maxYear={new Date().getFullYear() + 1}
+        />
+        
+        {/* Reason Input Popup */}
+        {reasonInputVisible && (
+          <View style={[styles.confirmAlertContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+            <View style={[styles.confirmAlertBox, { backgroundColor: theme.colors.card.background }]}>
+              <Text style={[styles.confirmAlertTitle, { color: theme.colors.text.primary }]}>
+                {t('leave.enterCancellationReason', 'Enter Cancellation Reason')}
+              </Text>
+              <TextInput
+                style={[
+                  styles.reasonInput,
+                  { 
+                    backgroundColor: theme.colors.background.secondary,
+                    color: theme.colors.text.primary,
+                    borderColor: theme.colors.border.medium
+                  }
+                ]}
+                placeholder={t('leave.cancellationReasonPlaceholder', 'Please provide a reason...')}
+                placeholderTextColor={theme.colors.text.secondary}
+                value={cancellationReason}
+                onChangeText={setCancellationReason}
+                multiline
+                numberOfLines={3}
+              />
+              <View style={styles.confirmAlertButtons}>
+                <Button
+                  title={t('common.cancel', 'Cancel')}
+                  onPress={() => setReasonInputVisible(false)}
+                  variant="outline"
+                  size="small"
+                  style={styles.confirmAlertButton}
+                />
+                <Button
+                  title={t('common.confirm', 'Confirm')}
+                  onPress={confirmReason}
+                  variant="primary"
+                  size="small"
+                  style={styles.confirmAlertButton}
+                />
+              </View>
+            </View>
+          </View>
+        )}
+        
+        {confirmAlertVisible && (
+          <View style={[styles.confirmAlertContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+            <View style={[styles.confirmAlertBox, { backgroundColor: theme.colors.card.background }]}>
+              <Text style={[styles.confirmAlertTitle, { color: theme.colors.text.primary }]}>
+                {t('leave.confirmAction', 'Confirm Action')}
+              </Text>
+              <Text style={[styles.confirmAlertMessage, { color: theme.colors.text.secondary }]}>
+                {confirmAlertMessage}
+              </Text>
+              <View style={styles.confirmAlertButtons}>
+                <Button
+                  title={t('common.no', 'No')}
+                  onPress={() => setConfirmAlertVisible(false)}
+                  variant="outline"
+                  size="small"
+                  style={styles.confirmAlertButton}
+                />
+                <Button
+                  title={t('common.yes', 'Yes')}
+                  onPress={confirmCancelRequest}
+                  variant="primary"
+                  size="small"
+                  style={styles.confirmAlertButton}
+                />
+              </View>
+            </View>
+          </View>
+        )}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.back()}
+          >
+            <Ionicons 
+              name="arrow-back" 
+              size={24} 
+              color={theme.colors.text.primary} 
+            />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.colors.text.primary }]}>
+            {t('leave.viewApplications', 'View Leave Applications')}
+          </Text>
+        </View>
+
+        {loading && !refreshing ? (
+          <View style={styles.loadingContainer}>
+            <LoadingIndicator 
+              size={60}
+              duration={600}
+              showText={true}
+            />
+          </View>
+        ) : (
+          <View style={styles.content}>
+            {renderYearSelector()}
+            {renderFilterButtons()}
+            
+            <FlatList
+              data={filteredHistory}
+              renderItem={renderLeaveItem}
+              keyExtractor={(item) => item.id.toString()}
+              contentContainerStyle={styles.listContainer}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[theme.colors.primary]}
+                  tintColor={theme.colors.primary}
+                />
+              }
+              ListEmptyComponent={() => (
+                <View style={styles.emptyContainer}>
+                  <Ionicons 
+                    name="calendar-outline" 
+                    size={60} 
+                    color={theme.colors.text.secondary} 
+                  />
+                  <Text style={[styles.emptyTitle, { color: theme.colors.text.primary }]}>
+                    {t('leave.noLeaveApplications', 'No Leave Applications')}
+                  </Text>
+                  <Text style={[styles.emptySubtitle, { color: theme.colors.text.secondary }]}>
+                    {t('leave.noLeaveApplicationsDesc', 'You have not applied for any leave during this period.')}
+                  </Text>
+                    <Button
+                      title={t('leave.createLeaveApplication', 'Create Leave Application')}
+                      onPress={() => router.push('/modules/leave/CreateLeaveApplication')}
+                      variant="primary"
+                      size="medium"
+                      icon="add-circle-outline"
+                      style={styles.applyButton}
+                    />
+                </View>
+              )}
+            />
+          </View>
+        )}
       </View>
-    )}
-  </View>
-);
+    </KeyboardAvoidingView>
+  );
 }
 
 // Add these styles to the StyleSheet

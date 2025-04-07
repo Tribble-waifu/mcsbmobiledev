@@ -40,12 +40,8 @@ export default function LeaveMenu() {
           setUserRoles(roles);
         }
         
-        // Check if user has approver role
-        // This is a simple check - you might need to adjust based on your actual role names
-        const hasApproverRole = roles.some(role =>  
-          role.toLowerCase().includes('approval') ||
-          role.toLowerCase().includes('employee')
-        );
+        // Check if user has the specific "Approval" role
+        const hasApproverRole = roles.some(role => role === "Approval");
         
         setIsApprover(hasApproverRole);
         

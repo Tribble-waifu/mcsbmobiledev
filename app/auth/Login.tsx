@@ -33,7 +33,10 @@ export default function Login() {
       backgroundColor: theme.colors.card.background,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-    }
+    },
+    alertContainer: Platform.OS === 'ios' ? {
+      marginBottom: 50 // Add bottom margin for iOS to avoid the dock
+    } : {}
   };
   
   const [username, setUsername] = useState('');
@@ -134,12 +137,15 @@ export default function Login() {
       {/* Hide the header */}
       <Stack.Screen options={{ headerShown: false }} />
       
-      <AlertMessage
-        visible={alertVisible}
-        type={alertType}
-        message={alertMessage}
-        onClose={() => setAlertVisible(false)}
-      />
+      {/* Add a SafeAreaView or a View with padding to position the alert better */}
+      <View style={Platform.OS === 'ios' ? { paddingTop: 50 } : undefined}>
+        <AlertMessage
+          visible={alertVisible}
+          type={alertType}
+          message={alertMessage}
+          onClose={() => setAlertVisible(false)}
+        />
+      </View>
   
       {/* Remove the demo loader conditional rendering */}
       <View style={styles.logoContainer}>
